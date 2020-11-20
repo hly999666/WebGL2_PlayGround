@@ -113,7 +113,7 @@ for (var ii = 0; ii < 4; ++ii) {
    //and vertexAttribPointer setting unchanged ,i.e. bind send to positionAttributeLocation as old format
 
  //change pointing method , output change
-   gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, ii*4);
+   gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, 0);
 let lit= ii /4;
   gl.uniform4f(colorLocation, lit,lit, 0.8,0.8);
 
