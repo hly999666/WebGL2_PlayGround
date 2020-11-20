@@ -47,7 +47,7 @@ function setRectangle(gl, x, y, width, height) {
 function main() {
   let canvas = document.querySelector("#c");
   let gl = canvas.getContext("webgl2");
- 
+
   if (!gl) {
     alert("No WebGL2!");
     return;
@@ -90,8 +90,7 @@ gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride,
 webglUtils.resizeCanvasToDisplaySize(gl.canvas);
 //set draw area
 gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-gl.clearColor(0, 0, 0, 0);
-gl.clear(gl.COLOR_BUFFER_BIT);
+
 gl.useProgram(program);
 //bind draw data
 gl.bindVertexArray(vao);
@@ -102,6 +101,8 @@ gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
 /* gl.enable(gl.BLEND);
 gl.blendFunc(gl.SRC_COLOR, gl.DST_COLOR); */
 let colorLocation = gl.getUniformLocation(program, "u_color");
+gl.clearColor(0,0, 0, 0);
+gl.clear(gl.COLOR_BUFFER_BIT); 
 for (var ii = 0; ii < 4; ++ii) {
   // Put a rectangle in the position buffer
   setRectangle(
@@ -113,7 +114,6 @@ for (var ii = 0; ii < 4; ++ii) {
    //and vertexAttribPointer setting unchanged ,i.e. bind send to positionAttributeLocation as old format
 
  //change pointing method , output change
-   gl.vertexAttribPointer(positionAttributeLocation, size, type, normalize, stride, 0);
 let lit= ii /4;
   gl.uniform4f(colorLocation, lit,lit, 0.8,0.8);
 
