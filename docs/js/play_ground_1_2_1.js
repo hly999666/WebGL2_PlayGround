@@ -2,7 +2,7 @@
 
 let vs = /*glsl*/`#version 300 es
 in vec2 a_position;
-
+in vec4 a_color;
 uniform mat3 u_matrix;
 
 out vec4 v_color;
@@ -14,7 +14,7 @@ void main() {
   // Convert from clipspace to colorspace.
   // Clipspace goes -1.0 to +1.0
   // Colorspace goes from 0.0 to 1.0
-  v_color = gl_Position * 0.5 + 0.5;
+  v_color = a_color;
 }
 `;
 
@@ -34,13 +34,36 @@ function setGeometry(gl) {
   gl.bufferData(
       gl.ARRAY_BUFFER,
       new Float32Array([
-             0, -100,
-           150,  125,
-          -175,  100,
+        -150, -100,
+        150, -100,
+       -150,  100,
+        150, -100,
+       -150,  100,
+        150,  100,
       ]),
       gl.STATIC_DRAW);
 }
-
+function setColors(gl) {
+  // Pick 2 random colors.
+  let r1 = Math.random();
+  let b1 = Math.random();
+  let g1 = Math.random();
+ 
+  let r2 = Math.random();
+  let b2 = Math.random();
+  let g2 = Math.random();
+ 
+  gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array(
+        [ r1, b1, g1, 1,
+          r1, b1, g1, 1,
+          r1, b1, g1, 1,
+          r2, b2, g2, 1,
+          r2, b2, g2, 1,
+          r2, b2, g2, 1]),
+      gl.STATIC_DRAW);
+}
 function main() {
   // Get A WebGL context
   /** @type {HTMLCanvasElement} */
@@ -55,7 +78,7 @@ function main() {
 
   // look up where the vertex data needs to go.
   let positionLocation = gl.getAttribLocation(program, "a_position");
-
+  let colorLocation = gl.getAttribLocation(program, "a_color");
   // lookup uniforms
   let matrixLocation = gl.getUniformLocation(program, "u_matrix");
 
@@ -64,8 +87,8 @@ function main() {
   gl.bindVertexArray(vao);
 
   // Create a buffer.
-  let buffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  let pos_buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, pos_buffer);
 
   // Set Geometry.
   setGeometry(gl);
@@ -79,6 +102,21 @@ function main() {
   let offset = 0;
   gl.vertexAttribPointer(positionLocation, size, type, normalize, stride, offset);
 
+
+   // Create a buffer for the colors.
+   let color_buffer = gl.createBuffer();
+   gl.bindBuffer(gl.ARRAY_BUFFER, color_buffer);
+  
+   // Set the colors.
+   setColors(gl);
+   gl.enableVertexAttribArray(colorLocation);
+     size = 4;
+     type = gl.FLOAT;
+     normalize = false;
+     stride = 0;
+     offset = 0;
+   gl.vertexAttribPointer(colorLocation, size, type, normalize, stride, offset);
+   
   let translation = [200, 150];
   let angleInRadians = 0;
   let scale = [1, 1];
@@ -109,7 +147,7 @@ let  drawScene=function() {
 
   // Draw the geometry.
   let offset = 0;
-  let count = 3;
+  let count =6;
   gl.drawArrays(gl.TRIANGLES, offset, count);
 }
  
