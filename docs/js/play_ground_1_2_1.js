@@ -43,7 +43,7 @@ function setGeometry(gl) {
       ]),
       gl.STATIC_DRAW);
 }
-function setColors(gl) {
+function setColors_1(gl) {
   // Pick 2 random colors.
   let r1 = Math.random();
   let b1 = Math.random();
@@ -62,6 +62,39 @@ function setColors(gl) {
           r2, b2, g2, 1,
           r2, b2, g2, 1,
           r2, b2, g2, 1]),
+      gl.STATIC_DRAW);
+}
+function setColors_2(gl) {
+  // Make every vertex a different color.
+  gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array(
+        [ Math.random(), Math.random(), Math.random(), 1,
+          Math.random(), Math.random(), Math.random(), 1,
+          Math.random(), Math.random(), Math.random(), 1,
+          Math.random(), Math.random(), Math.random(), 1,
+          Math.random(), Math.random(), Math.random(), 1,
+          Math.random(), Math.random(), Math.random(), 1]),
+      gl.STATIC_DRAW);
+}
+function setColors_3(gl) {
+  // Pick 2 random colors.
+  var r1 = Math.random() * 256; // 0 to 255.99999
+  var b1 = Math.random() * 256; // these values
+  var g1 = Math.random() * 256; // will be truncated
+  var r2 = Math.random() * 256; // when stored in the
+  var b2 = Math.random() * 256; // Uint8Array
+  var g2 = Math.random() * 256;
+ 
+  gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Uint8Array(   // Uint8Array
+        [ r1, b1, g1, 255,
+          r1, b1, g1, 255,
+          r1, b1, g1, 255,
+          r2, b2, g2, 255,
+          r2, b2, g2, 255,
+          r2, b2, g2, 255]),
       gl.STATIC_DRAW);
 }
 function main() {
@@ -108,7 +141,7 @@ function main() {
    gl.bindBuffer(gl.ARRAY_BUFFER, color_buffer);
   
    // Set the colors.
-   setColors(gl);
+   setColors_2(gl);
    gl.enableVertexAttribArray(colorLocation);
      size = 4;
      type = gl.FLOAT;
