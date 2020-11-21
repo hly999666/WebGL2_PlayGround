@@ -1,13 +1,35 @@
-body{
-  
+@import url("./libs/webgl-tutorials.css");
+body {
+  margin: 0;
 }
-canvas {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-    width: 50%;
-    height: 50%;
-    display: block;
-    border: none;
-   background-color: rgb(201, 201, 201);
-  }
-  
+ 
+ 
+.main_container{
+    display: flex;
+    height:100% ;
+}
+.main_container>.canvas_div{
+  width:70%;
+  height:100% ;
+  display:block;
+  background-color: bisque;
+}
+canvas{
+  width:100%;
+  height:100% ;
+  display: block;
+  background-color: rgb(195, 214, 208);
+}
+.main_container>.ui_div{
+  /* transform-origin:left top ;
+  transform: scale(2); */
+  width:30%;
+  display:block;
+  background-color: rgb(235, 235, 235);
+}
+
+#uiContainer{
+  position: static;
+  display: block;
+  margin: 10px 20% 20%;
+}
