@@ -79,12 +79,12 @@ function setColors_2(gl) {
 }
 function setColors_3(gl) {
   // Pick 2 random colors.
-  var r1 = Math.random() * 256; // 0 to 255.99999
-  var b1 = Math.random() * 256; // these values
-  var g1 = Math.random() * 256; // will be truncated
-  var r2 = Math.random() * 256; // when stored in the
-  var b2 = Math.random() * 256; // Uint8Array
-  var g2 = Math.random() * 256;
+  let r1 = Math.random() * 256; // 0 to 255.99999
+  let b1 = Math.random() * 256; // these values
+  let g1 = Math.random() * 256; // will be truncated
+  let r2 = Math.random() * 256; // when stored in the
+  let b2 = Math.random() * 256; // Uint8Array
+  let g2 = Math.random() * 256;
  
   gl.bufferData(
       gl.ARRAY_BUFFER,
@@ -141,11 +141,11 @@ function main() {
    gl.bindBuffer(gl.ARRAY_BUFFER, color_buffer);
   
    // Set the colors.
-   setColors_2(gl);
+   setColors_3(gl);
    gl.enableVertexAttribArray(colorLocation);
      size = 4;
-     type = gl.FLOAT;
-     normalize = false;
+     type =gl.UNSIGNED_BYTE;;
+     normalize = true;
      stride = 0;
      offset = 0;
    gl.vertexAttribPointer(colorLocation, size, type, normalize, stride, offset);
