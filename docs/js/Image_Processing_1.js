@@ -31,14 +31,39 @@ uniform sampler2D u_image;
 
 in vec2 v_texCoord;
 
+uniform float u_kernel[9];
+uniform float u_kernelWeight;
+
 out vec4 outColor;
 
 void main() {
-    vec4 color= texture(u_image, v_texCoord);
-    float r=color.r;
-    color.r=color.g;
-    color.g=r;
-  outColor =color;
+//simple simpling
+  //outColor =texture(u_image, v_texCoord);
+//swift r and b channel
+//outColor = texture(u_image, v_texCoord).bgra;
+//average horizontal  neighbour,create blur effect
+/* vec2 onePixel = vec2(1) / vec2(textureSize(u_image, 0));
+ outColor = (
+     texture(u_image, v_texCoord) +
+     texture(u_image, v_texCoord + vec2( onePixel.x, 0.0)) +
+     texture(u_image, v_texCoord + vec2(-onePixel.x, 0.0))) / 3.0; */
+  //horizontal mirror
+/*   outColor = 
+     texture(u_image, vec2(1.0f-v_texCoord.x,v_texCoord.y));  */
+
+     vec2 one_shift = vec2(1) / vec2(textureSize(u_image, 0));
+ 
+ vec4 colorSum =
+     texture(u_image, v_texCoord + one_shift * vec2(-1, -1)) * u_kernel[0] +
+     texture(u_image, v_texCoord + one_shift * vec2( 0, -1)) * u_kernel[1] +
+     texture(u_image, v_texCoord + one_shift * vec2( 1, -1)) * u_kernel[2] +
+     texture(u_image, v_texCoord + one_shift * vec2(-1,  0)) * u_kernel[3] +
+     texture(u_image, v_texCoord + one_shift * vec2( 0,  0)) * u_kernel[4] +
+     texture(u_image, v_texCoord + one_shift * vec2( 1,  0)) * u_kernel[5] +
+     texture(u_image, v_texCoord + one_shift * vec2(-1,  1)) * u_kernel[6] +
+     texture(u_image, v_texCoord + one_shift * vec2( 0,  1)) * u_kernel[7] +
+     texture(u_image, v_texCoord + one_shift * vec2( 1,  1)) * u_kernel[8] ;
+ outColor = vec4((colorSum / u_kernelWeight).rgb, 1);
 }
 `;
 
@@ -56,7 +81,12 @@ function setRectangle(gl, x, y, width, height) {
        x2, y2,
     ]), gl.STATIC_DRAW);
   }
-  
+  function computeKernelWeight(kernel) {
+    let weight = kernel.reduce(function(prev, curr) {
+        return prev + curr;
+    });
+    return weight <= 0 ? 1 : weight;
+  }
  function renderImage(image){
    // setup webgl
    let canvas = document.querySelector("#canvas");
@@ -74,7 +104,9 @@ function setRectangle(gl, x, y, width, height) {
     let texCoordAttributeLocation = gl.getAttribLocation(program, "a_texCoord");
     let resolutionLocation = gl.getUniformLocation(program, "u_resolution");
     let imageLocation = gl.getUniformLocation(program, "u_image");
-
+    //note get array position should by array[0] position
+    let kernelLocation = gl.getUniformLocation(program, "u_kernel[0]");
+    let kernelWeightLocation = gl.getUniformLocation(program, "u_kernelWeight");
 
   // create vao to contain data
   let vao = gl.createVertexArray();
@@ -139,6 +171,16 @@ function setRectangle(gl, x, y, width, height) {
                srcType,
                image);
 
+//handle kernel 
+
+let edgeDetectKernel = [
+  -1, -1, -1,
+  -1,  8, -1,
+  -1, -1, -1
+];
+
+gl.uniform1fv(kernelLocation, edgeDetectKernel);
+ gl.uniform1f(kernelWeightLocation, computeKernelWeight(edgeDetectKernel));
 // set up viewport 
 webglUtils.resizeCanvasToDisplaySize(gl.canvas);
 gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
