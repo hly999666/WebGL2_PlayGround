@@ -179,8 +179,7 @@ let edgeDetectKernel = [
   -1, -1, -1
 ];
 
-gl.uniform1fv(kernelLocation, edgeDetectKernel);
- gl.uniform1f(kernelWeightLocation, computeKernelWeight(edgeDetectKernel));
+
 // set up viewport 
 webglUtils.resizeCanvasToDisplaySize(gl.canvas);
 gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -196,6 +195,8 @@ gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   //bind uniform 
   gl.uniform2f(resolutionLocation, gl.canvas.width, gl.canvas.height);
   gl.uniform1i(imageLocation, 0);
+  gl.uniform1fv(kernelLocation, edgeDetectKernel);
+ gl.uniform1f(kernelWeightLocation, computeKernelWeight(edgeDetectKernel));
   //bind buffer  and send pos data to GPU
 
    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
