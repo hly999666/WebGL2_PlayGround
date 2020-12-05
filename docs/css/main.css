@@ -62,3 +62,12 @@ td {
   padding: 0px;
   margin: 0px;
 }
+#ui{
+    display: block;
+    width: 100%;
+    height: min-content;
+   height: 30%;
+   padding: 0 20% 0 0;
+}
+
+ 
