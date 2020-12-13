@@ -507,7 +507,7 @@ function main() {
     let count = 16 * 6;
     gl.drawArrays(primitiveType, offset, count);
   }
-}
+
   drawScene();
 
  
@@ -541,5 +541,5 @@ function main() {
     outerLimit = degToRad(ui.value);
     drawScene();
   }
- 
+}
 window.addEventListener("load",()=>{main();});
