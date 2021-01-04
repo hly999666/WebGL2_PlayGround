@@ -5,13 +5,13 @@ in vec4 a_position;
 in float a_brightness;
 
 out float v_brightness;
-
+uniform mat4 u_matrix;
 void main() {
-
-  gl_Position = a_position;
-
-   
-  v_brightness = a_brightness;
+    v_brightness = a_brightness;
+  gl_Position = u_matrix*a_position;
+  gl_Position=gl_Position/gl_Position.w;
+  gl_Position.w=1.0;
+ 
 }
 `;
 
@@ -43,27 +43,27 @@ function main() {
  
     let positionAttributeLocation = gl.getAttribLocation(program, "a_position");
     let brightnessAttributeLocation = gl.getAttribLocation(program, "a_brightness");
- 
+    let matrixLocation = gl.getUniformLocation(program, "u_matrix");
     let positionBuffer = gl.createBuffer();
 
  
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 
-  let mult = 20;
+  let mult = -10;
   let positions = [
-      -.8,  .8, 0, 1,   
-       .8,  .8, 0, 1,
-      -.8,  .2, 0, 1,
-      -.8,  .2, 0, 1,  
-       .8,  .8, 0, 1,
-       .8,  .2, 0, 1,
+      -.8,  .8, -1, 1,   
+       .8,  .8, -1, 1,
+      -.8,  .2, -1, 1,
+      -.8,  .2, -1, 1,  
+       .8,  .8, -1, 1,
+       .8,  .2, -1, 1,
 
-      -.8       , -.2       , 0,    1,   
-       .8 * mult, -.2 * mult, 0, mult,
-      -.8       , -.8       , 0,    1,
-      -.8       , -.8       , 0,    1,  
-       .8 * mult, -.2 * mult, 0, mult,
-       .8 * mult, -.8 * mult, 0, mult,
+      -.8, -.2  , -1, 1,   
+       .8 , -.2 , mult, 1,
+      -.8 , -.8  , -1, 1,
+      -.8 , -.8  , -1,1,  
+       .8, -.2 , mult, 1,
+       .8, -.8 , mult, 1,
   ];
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
@@ -72,7 +72,7 @@ function main() {
  
   gl.bindBuffer(gl.ARRAY_BUFFER, brightnessBuffer);
 
-  var brightness = [
+  let brightness = [
     0,  
     1,
     0,
@@ -131,6 +131,24 @@ function main() {
   gl.useProgram(program);
  
   gl.bindVertexArray(vao);
+
+
+  let aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+  let zNear = 1;
+  let zFar = 2000;
+  let projectionMatrix = m4.perspective(45, aspect, zNear, zFar);
+
+  let cameraPosition = [0, 0, 1.5];
+  let up = [0, 1, 0];
+  let target = [0, 0, 0];
+ 
+  let cameraMatrix = m4.lookAt(cameraPosition, target, up);
+ 
+  let viewMatrix = m4.inverse(cameraMatrix);
+
+  let viewProjectionMatrix = m4.multiply(projectionMatrix, viewMatrix);
+
+  gl.uniformMatrix4fv(matrixLocation, false, viewProjectionMatrix);
 
  
   let primitiveType = gl.TRIANGLES;
