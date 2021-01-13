@@ -63,7 +63,9 @@ void main() {
      texture(u_image, v_texCoord + one_shift * vec2(-1,  1)) * u_kernel[6] +
      texture(u_image, v_texCoord + one_shift * vec2( 0,  1)) * u_kernel[7] +
      texture(u_image, v_texCoord + one_shift * vec2( 1,  1)) * u_kernel[8] ;
- outColor = vec4((colorSum / u_kernelWeight).rgb, 1);
+     //colorSum=colorSum/10.0;
+ //outColor = vec4((colorSum / u_kernelWeight).rgb, 1);
+ outColor = vec4(0.5,0.8,0.8, 1);
 }
 `;
 
@@ -87,7 +89,7 @@ function setRectangle(gl, x, y, width, height) {
     });
     return weight <= 0 ? 1 : weight;
   }
- function renderImage(image){
+ function renderImage(image,isTexture=false){
    // setup webgl
    let canvas = document.querySelector("#canvas");
    let gl = canvas.getContext("webgl2");
@@ -150,35 +152,46 @@ function setRectangle(gl, x, y, width, height) {
   gl.vertexAttribPointer(
       texCoordAttributeLocation, size, type, normalize, stride, offset);
  //set up texture 
- let texture = gl.createTexture();
- gl.activeTexture(gl.TEXTURE0 + 0);
- gl.bindTexture(gl.TEXTURE_2D, texture);
-
-
- gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
- gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
- gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
- gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-
- let mipLevel = 0;                
- let internalFormat = gl.RGBA;    
- let srcFormat = gl.RGBA;      
- let srcType = gl.UNSIGNED_BYTE;  
- gl.texImage2D(gl.TEXTURE_2D,
-               mipLevel,
-               internalFormat,
-               srcFormat,
-               srcType,
-               image);
-
+ let texture = null;
+  if(!isTexture){
+    texture=gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0 + 0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+   
+   
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+   
+    let mipLevel = 0;                
+    let internalFormat = gl.RGBA;    
+    let srcFormat = gl.RGBA;      
+    let srcType = gl.UNSIGNED_BYTE;  
+    gl.texImage2D(gl.TEXTURE_2D,
+                  mipLevel,
+                  internalFormat,
+                  srcFormat,
+                  srcType,
+                  image);
+   
+  }else{
+    texture=image;
+    gl.activeTexture(gl.TEXTURE0 + 0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+  }
 //handle kernel 
 
-let edgeDetectKernel = [
+/* let edgeDetectKernel = [
   -1, -1, -1,
   -1,  8, -1,
   -1, -1, -1
-];
-
+]; */
+let edgeDetectKernel = [
+ 0,0,0,
+ 0,8,0,
+ 0,0,0
+]; 
 
 // set up viewport 
 webglUtils.resizeCanvasToDisplaySize(gl.canvas);
@@ -201,7 +214,11 @@ gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 
-   setRectangle(gl, 0, 0, image.width*2, image.height*2);
+  if(!isTexture){
+    setRectangle(gl, 0, 0, image.width*2, image.height*2);
+  }else{
+    setRectangle(gl, 0, 0, 512, 512);
+  }
   //set position data to GPU 
 
   // Draw cell 
@@ -212,11 +229,11 @@ gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
  
 
 }
-window.addEventListener("load",()=>{
+/* window.addEventListener("load",()=>{
 
     let image = new Image();
     image.src = "./texture/leaves.jpg";  // MUST BE SAME DOMAIN!!!
     image.onload = function() {
     renderImage(image);
   };
-  });
+  }); */
