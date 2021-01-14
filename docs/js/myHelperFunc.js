@@ -49,9 +49,7 @@ function renderTexturePlane(gl,image,isTexture){
     // outColor = texture(u_image,v_texCoord);
     vec4 tex_col=texture(u_image,v_texCoord);
     float z=tex_col.r;
-    float n=1.0;
-    float f=100.0;
-    float d=(2.0 * n) / (f + n - z*(f-n));
+    float d=z;
     //d=d*0.5;
     outColor = vec4(d,d,d,1.0);
     }
@@ -96,12 +94,12 @@ function renderTexturePlane(gl,image,isTexture){
    let texCoordBuffer = gl.createBuffer();
    gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-    0.0, 1.0,
-    1.0, 0.0,
-    1.0, 1.0,
-    0.0, 1.0,
     0.0, 0.0,
-    1.0, 0.0
+    1.0, 1.0,
+    1.0, 0.0,
+    0.0, 0.0,
+    0.0, 1.0,
+    1.0, 1.0
    ]), gl.STATIC_DRAW);
  
    gl.enableVertexAttribArray(texCoordAttributeLocation);
@@ -117,17 +115,19 @@ function renderTexturePlane(gl,image,isTexture){
      let texture=image;
 
 
-      webglUtils.resizeCanvasToDisplaySize(gl.canvas);
-gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+      //webglUtils.resizeCanvasToDisplaySize(gl.canvas);
+
 
 // set up clear state 
 
-gl.clearColor(0.8, 0.0, 0.0, 1.0);
+//gl.clearColor(0.8, 0.8, 0.0, 1.0);
+gl.bindFramebuffer(gl.FRAMEBUFFER, null);   
+gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   /*finish setup */
   // bind progrom and vao 
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
   gl.useProgram(program);
   
   gl.bindVertexArray(vao);
