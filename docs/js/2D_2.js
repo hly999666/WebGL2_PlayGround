@@ -64,7 +64,6 @@ class MatrixStack{
         let m = this.getCurrentMatrix();
         this.setCurrentMatrix(m4.scale(m, x, y, z));
       };
-      
 }
 
 function main() {
