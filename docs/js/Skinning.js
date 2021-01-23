@@ -451,4 +451,18 @@ async function main() {
   requestAnimationFrame(render);
 }
 
-window.addEventListener("load",()=>{main();});
+window.addEventListener("load",async()=>{
+  main();
+  let result666=await get_666();
+  console.log(`${result666}_!!!!`);
+});
+
+function get_666(){
+  let promise=new Promise(function(res,rej){
+       setTimeout(()=>{
+         res("666_111");
+       })
+  });
+  return promise;
+}
+ 
