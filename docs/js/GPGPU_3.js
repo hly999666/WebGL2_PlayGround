@@ -147,7 +147,67 @@ void main() {
 }
 `;
 
+const updateLinesVS =/*glsl*/ `#version 300 es
+in vec4 position;
+void main() {
+  gl_Position = position;
+}
+`;
+ 
+const updateLinesFS =/*glsl*/  `#version 300 es
+precision highp float;
+ 
+uniform sampler2D linesTex;
+uniform sampler2D velocityTex;
+uniform vec2 canvasDimensions;
+uniform float deltaTime;
+ 
+out vec4 outColor;
+ 
+vec2 euclideanModulo(vec2 n, vec2 m) {
+    //return mod(mod(n, m) + m, m);
+    return mod(n, m);
+}
+ 
+void main() { 
+  ivec2 texelCoord = ivec2(gl_FragCoord.xy);
+ 
+  vec2 position = texelFetch(linesTex, texelCoord, 0).xy;
+  vec2 velocity = texelFetch(velocityTex, texelCoord, 0).xy;
+  vec2 newPosition = euclideanModulo(position + velocity * deltaTime, canvasDimensions);
+ 
+ //read to position of gl_FragCoord.xy
+  outColor = vec4(newPosition, 0, 1);
+}
+`;
 
+
+const updatePositionVS = /*glsl*/ `#version 300 es
+  in vec2 oldPosition;
+  in vec2 velocity;
+
+  uniform float deltaTime;
+  uniform vec2 canvasDimensions;
+
+  out vec2 newPosition;
+
+  vec2 euclideanModulo(vec2 n, vec2 m) {
+  	return mod(mod(n, m) + m, m);
+  }
+
+  void main() {
+    //output data using transformFeedback
+    newPosition = euclideanModulo(
+        oldPosition + velocity * deltaTime,
+        canvasDimensions);
+  }
+  `;
+
+  const updatePositionFS =/*glsl*/  `#version 300 es
+  precision highp float;
+  void main() {
+  }
+  `;
 function createShader(gl, type, src) {
   const shader = gl.createShader(type);
   gl.shaderSource(shader, src);
@@ -240,6 +300,7 @@ function makeVertexArray(gl, bufLocPairs) {
         0,        // offset
     );
   }
+  gl.bindVertexArray(null);
   return va;
 }
 
@@ -251,7 +312,13 @@ function makeTransformFeedback(gl, buffer) {
   gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, null);
   return tf;
 }
- 
+function createFramebuffer(gl, tex) {
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return fb;
+}
 function log(...args) {
   const elem = document.createElement('pre');
   elem.textContent = args.join(' ');
@@ -279,6 +346,11 @@ const drawClosestLinesPrg = createProgram(
     gl, [drawClosestLinesVS, drawClosestLinesPointsFS]);
 const drawPointsPrg = createProgram(
     gl, [drawPointsVS, drawClosestLinesPointsFS]);
+  const updatePositionPrg = createProgram(
+      gl, [updatePositionVS, updatePositionFS], ['newPosition']);
+  const updateLinesPrg = createProgram(
+      gl, [updateLinesVS, updateLinesFS]);
+
 
   //find data location
 const closestLinePrgLocs = {
@@ -301,7 +373,19 @@ const drawPointsPrgLocs = {
   matrix: gl.getUniformLocation(drawPointsPrg, 'matrix'),
   numPoints: gl.getUniformLocation(drawPointsPrg, 'numPoints'),
 };
-
+const updatePositionPrgLocs = {
+  oldPosition: gl.getAttribLocation(updatePositionPrg, 'oldPosition'),
+  velocity: gl.getAttribLocation(updatePositionPrg, 'velocity'),
+  canvasDimensions: gl.getUniformLocation(updatePositionPrg, 'canvasDimensions'),
+  deltaTime: gl.getUniformLocation(updatePositionPrg, 'deltaTime'),
+};
+const updateLinesPrgLocs = {
+  position: gl.getAttribLocation(updateLinesPrg, 'position'),
+  linesTex: gl.getUniformLocation(updateLinesPrg, 'linesTex'),
+  velocityTex: gl.getUniformLocation(updateLinesPrg, 'velocityTex'),
+  canvasDimensions: gl.getUniformLocation(updateLinesPrg, 'canvasDimensions'),
+  deltaTime: gl.getUniformLocation(updateLinesPrg, 'deltaTime'),
+};
 //set up correct canvas szie
 webglUtils.resizeCanvasToDisplaySize(gl.canvas);
 
@@ -311,38 +395,107 @@ webglUtils.resizeCanvasToDisplaySize(gl.canvas);
   const numPoints = points.length / 2;
   const numLineSegments = lines.length / 2 / 2;
 
+  const pointVelocities = createPoints(numPoints, [[-20, 20], [-20, 20]]);
+  const lineVelocities = createPoints(numLineSegments * 2, [[-20, 20], [-20, 20]]);
 
+  //set up data buffer
 //result index is int 32bit 4bytes ,so size= points.length * 4
   const closestNdxBuffer = makeBuffer(gl, points.length * 4, gl.STATIC_DRAW);
-  const pointsBuffer = makeBuffer(gl, new Float32Array(points), gl.STATIC_DRAW);
+  //const pointsBuffer = makeBuffer(gl, new Float32Array(points), gl.STATIC_DRAW);
 
-  
-  const {tex: linesTex, dimensions: linesTexDimensions} =
-      createDataTexture(gl, lines, 2, gl.RG32F, gl.RG, gl.FLOAT);
-
+  //two buffer for swapbuffer
+  const pointsBuffer1 = makeBuffer(gl, new Float32Array(points), gl.DYNAMIC_DRAW);
+const pointsBuffer2 = makeBuffer(gl, new Float32Array(points), gl.DYNAMIC_DRAW);
+const pointVelocitiesBuffer = makeBuffer(gl, new Float32Array(pointVelocities), gl.STATIC_DRAW);
+const quadBuffer = makeBuffer(gl, new Float32Array([
+  -1, -1,
+   1, -1,
+  -1,  1,
+  -1,  1,
+   1, -1,
+   1,  1,
+]), gl.STATIC_DRAW);
   
 
  
+//also two linesTex for swap date buffer
+      const {tex: linesTex1, dimensions: linesTexDimensions1} =
+      createDataTexture(gl, lines, 2, gl.RG32F, gl.RG, gl.FLOAT);
+  const {tex: linesTex2, dimensions: linesTexDimensions2} =
+      createDataTexture(gl, lines, 2, gl.RG32F, gl.RG, gl.FLOAT);
+  const {tex: lineVelocitiesTex, dimensions: lineVelocitiesTexDimensions} =
+      createDataTexture(gl, lineVelocities, 2, gl.RG32F, gl.RG, gl.FLOAT);    
+  
 
-  const closestLinesVA = makeVertexArray(gl, [
-    [pointsBuffer, closestLinePrgLocs.point],
-  ]);
+ 
+//set up va
+const updatePositionVA1 = makeVertexArray(gl, [
+  [pointsBuffer1, updatePositionPrgLocs.oldPosition],
+  [pointVelocitiesBuffer, updatePositionPrgLocs.velocity],
+]);
+const updatePositionVA2 = makeVertexArray(gl, [
+  [pointsBuffer2, updatePositionPrgLocs.oldPosition],
+  [pointVelocitiesBuffer, updatePositionPrgLocs.velocity],
+]);
+ 
+const updateLinesVA = makeVertexArray(gl, [
+  [quadBuffer, updateLinesPrgLocs.position],
+]);
 
-  const drawClosestLinesVA = gl.createVertexArray();
-  gl.bindVertexArray(drawClosestLinesVA);
-  gl.bindBuffer(gl.ARRAY_BUFFER, closestNdxBuffer);
-  gl.enableVertexAttribArray(drawClosestLinesPrgLocs.closestNdx);
-  gl.vertexAttribIPointer(drawClosestLinesPrgLocs.closestNdx, 1, gl.INT, 0, 0);
-  //one index per line
-  gl.vertexAttribDivisor(drawClosestLinesPrgLocs.closestNdx, 1);
+const closestLinesVA1 = makeVertexArray(gl, [
+  [pointsBuffer1, closestLinePrgLocs.point],
+]);
+const closestLinesVA2 = makeVertexArray(gl, [
+  [pointsBuffer2, closestLinePrgLocs.point],
+]);
+ 
+const drawClosestLinesVA = gl.createVertexArray();
+gl.bindVertexArray(drawClosestLinesVA);
+gl.bindBuffer(gl.ARRAY_BUFFER, closestNdxBuffer);
+gl.enableVertexAttribArray(drawClosestLinesPrgLocs.closestNdx);
+gl.vertexAttribIPointer(drawClosestLinesPrgLocs.closestNdx, 1, gl.INT, 0, 0);
+gl.vertexAttribDivisor(drawClosestLinesPrgLocs.closestNdx, 1);
 
-  const drawPointsVA = makeVertexArray(gl, [
-    [pointsBuffer, drawPointsPrgLocs.point],
-  ]);
+const drawPointsVA1 = makeVertexArray(gl, [
+  [pointsBuffer1, drawPointsPrgLocs.point],
+]);
+const drawPointsVA2 = makeVertexArray(gl, [
+  [pointsBuffer2, drawPointsPrgLocs.point],
+]);
+
+//set up transform feedback
+const pointsTF1 = makeTransformFeedback(gl, pointsBuffer1);
+const pointsTF2 = makeTransformFeedback(gl, pointsBuffer2);
+ 
+const closestNdxTF = makeTransformFeedback(gl, closestNdxBuffer);
+
+//set up framebuffer for line data 
+const linesFB1 = createFramebuffer(gl, linesTex1);
+const linesFB2 = createFramebuffer(gl, linesTex2);
+
+//data set for swapping
+
+let current = {
+  updatePositionVA: updatePositionVA1, 
+  pointsTF: pointsTF2,                
+  linesTex: linesTex1,                  
+  linesFB: linesFB2, 
+  closestLinesVA: closestLinesVA2,  
+  allLinesTex: linesTex2,    
+  drawPointsVA: drawPointsVA2
+};
+ 
+let next = {
+  updatePositionVA: updatePositionVA2, 
+  pointsTF: pointsTF1,     
+  linesTex: linesTex2,       
+  linesFB: linesFB1,    
+  closestLinesVA: closestLinesVA1,
+  allLinesTex: linesTex1,
+  drawPointsVA: drawPointsVA1
+};
 
 
-
-  const closestNdxTF = makeTransformFeedback(gl, closestNdxBuffer);
 
   //compute and rendering code
   function drawArraysWithTransformFeedback(gl, tf, primitiveType, count) {
@@ -362,11 +515,11 @@ webglUtils.resizeCanvasToDisplaySize(gl.canvas);
 
 
   function computeClosestLines() {
-    gl.bindVertexArray(closestLinesVA);
+    gl.bindVertexArray(current.closestLinesVA);
     gl.useProgram(closestLinePrg);
 
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, linesTex);
+    gl.bindTexture(gl.TEXTURE_2D, current.linesTex);
 
     gl.uniform1i(closestLinePrgLocs.linesTex, 0);
     gl.uniform1i(closestLinePrgLocs.numLineSegments, numLineSegments);
@@ -382,7 +535,8 @@ webglUtils.resizeCanvasToDisplaySize(gl.canvas);
     gl.useProgram(drawLinesPrg);
  
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, linesTex);
+    gl.bindTexture(gl.TEXTURE_2D, current.allLinesTex);
+
  
     gl.uniform1i(drawLinesPrgLocs.linesTex, 0);
     gl.uniformMatrix4fv(drawLinesPrgLocs.matrix, false, matrix);
@@ -395,7 +549,7 @@ webglUtils.resizeCanvasToDisplaySize(gl.canvas);
     gl.useProgram(drawClosestLinesPrg);
 
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, linesTex);
+    gl.bindTexture(gl.TEXTURE_2D, current.allLinesTex);
 
     gl.uniform1i(drawClosestLinesPrgLocs.linesTex, 0);
     gl.uniform1f(drawClosestLinesPrgLocs.numPoints, numPoints);
@@ -405,7 +559,7 @@ webglUtils.resizeCanvasToDisplaySize(gl.canvas);
   }
 
   function drawPoints(matrix) {
-    gl.bindVertexArray(drawPointsVA);
+    gl.bindVertexArray(current.drawPointsVA);
     gl.useProgram(drawPointsPrg);
 
     gl.uniform1f(drawPointsPrgLocs.numPoints, numPoints);
@@ -413,18 +567,78 @@ webglUtils.resizeCanvasToDisplaySize(gl.canvas);
 
     gl.drawArrays(gl.POINTS, 0, numPoints);
   }
+//update data function
 
+function updatePointPositions(deltaTime) {
+  gl.bindVertexArray(current.updatePositionVA);
+  gl.useProgram(updatePositionPrg);
+  gl.uniform1f(updatePositionPrgLocs.deltaTime, deltaTime);
+  gl.uniform2f(updatePositionPrgLocs.canvasDimensions, gl.canvas.width, gl.canvas.height);
+  drawArraysWithTransformFeedback(gl, current.pointsTF, gl.POINTS, numPoints);
+}
+ 
+function updateLineEndPoints(deltaTime) {
+ // just a quad
+  gl.bindVertexArray(updateLinesVA); 
+  gl.useProgram(updateLinesPrg);
+ 
+  // bind data texture
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, current.linesTex);
+  gl.activeTexture(gl.TEXTURE0 + 1);
+  gl.bindTexture(gl.TEXTURE_2D, lineVelocitiesTex);
+ 
+  // set up uniform
+  gl.uniform1i(updateLinesPrgLocs.linesTex, 0);
+  gl.uniform1i(updateLinesPrgLocs.velocityTex, 1);
+  gl.uniform1f(updateLinesPrgLocs.deltaTime, deltaTime);
+  gl.uniform2f(updateLinesPrgLocs.canvasDimensions, gl.canvas.width, gl.canvas.height);
+ 
+  // write to the other lines texture
+  gl.bindFramebuffer(gl.FRAMEBUFFER, current.linesFB);
+  //set up viewport size for rendering as the same as the input data
+  gl.viewport(0, 0, linesTexDimensions1[0],linesTexDimensions1[1]);
+ 
+  // drawing a clip space -1 to +1 quad = map over entire destination array
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+}
 
-//actual done render and computer
+//actual render function
+let then = 0;
+function render(time) {
+  //time is input of requestAnimationFrame
+  // convert to seconds
+  time *= 0.001;
+  // Subtract the previous time from the current time
+  const deltaTime = time - then;
+  // Remember the current time for the next frame.
+  then = time;
+ 
+  webglUtils.resizeCanvasToDisplaySize(gl.canvas);
+ 
   gl.clear(gl.COLOR_BUFFER_BIT);
-
+ 
+  updatePointPositions(deltaTime);
+  updateLineEndPoints(deltaTime);
   computeClosestLines();
-
+ 
   const matrix = m4.orthographic(0, gl.canvas.width, 0, gl.canvas.height, -1, 1);
-
+ 
   drawAllLines(matrix);
   drawClosestLines(matrix);
   drawPoints(matrix);
+ 
+  // swap
+  {
+    const temp = current;
+    current = next;
+    next = temp;
+  }
+ 
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+ 
 }
 
 
